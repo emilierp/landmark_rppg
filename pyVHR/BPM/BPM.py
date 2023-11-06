@@ -637,17 +637,17 @@ def BPM_clustering(ma, patch_bvps, fps, wsize, movement_thrs=[15, 15, 15], opt_f
       if XEnergy > movement_thrs[0]:
         MOTION_X_FILT = True
         PSD = np.multiply(PSD,XFmov) 
-        if MOTION_X_FILT: print('MOTION_X_FILT applied!')
+        # if MOTION_X_FILT: print('MOTION_X_FILT applied!')
       MOTION_Y_FILT = False
       if YEnergy > movement_thrs[1]:
         MOTION_Y_FILT = True
         PSD = np.multiply(PSD,YFmov) 
-        if MOTION_Y_FILT: print('MOTION_Y_FILT applied!')
+        # if MOTION_Y_FILT: print('MOTION_Y_FILT applied!')
       MOTION_Z_FILT = False
       if ZEnergy > movement_thrs[2]:
         MOTION_Z_FILT = True
         PSD = np.multiply(PSD,ZFmov)
-        if MOTION_Z_FILT: print('MOTION_Z_FILT applied!')
+        # if MOTION_Z_FILT: print('MOTION_Z_FILT applied!')
 
     # compute the distance matrix and theta angles
     W = pairwise_distances(PSD, PSD, metric='cosine')

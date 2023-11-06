@@ -338,7 +338,7 @@ class Pipeline():
         ## 2. set patches
         if roi_approach == 'patches':
             sig_processing.set_landmarks(ldmks_list)
-            sig_processing.set_square_patches_side(np.float(patch_size))
+            sig_processing.set_square_patches_side(float(patch_size))
         
         # set sig-processing and skin-processing params
         SignalProcessingParams.RGB_LOW_TH = RGB_LOW_HIGH_TH[0]
@@ -507,6 +507,9 @@ class Pipeline():
 
         # -- catch data (object)
         res = TestResult()
+        print("Dataset : ", self.datasetdict['dataset'], self.datasetdict['videodataDIR'], self.datasetdict['BVPdataDIR'])
+        print("Number of videos in folder : ", len(dataset.videoFilenames))
+        print("Number of videos in index : ", len(self.videoIdx))
 
         # -- SIG processing
         sig_processing = SignalProcessing()
@@ -560,8 +563,10 @@ class Pipeline():
             self.sigdict['skin_color_high_threshold'])
 
         # set video idx
-        self.videoIdx = [int(v) for v in range(len(dataset.videoFilenames))]
-
+        # CHANGED
+        if (len(self.videoIdx) == 0):
+            self.videoIdx = [int(v) for v in range(len(dataset.videoFilenames))]
+            
         # -- loop on videos
         for v in self.videoIdx:
 
@@ -1044,7 +1049,8 @@ class TestResult():
     def addDataSerie(self):
         # -- store serie
         if self.dict != None:
-            self.dataFrame = self.dataFrame.append(self.dict, ignore_index=True)
+            self.dataFrame = self.dataFrame._append(self.dict, ignore_index=True)
+            # self.dataFrame = self.dataFrame.append(self.dict, ignore_index=True)
 
     def newDataSerie(self):
         # -- new dict
