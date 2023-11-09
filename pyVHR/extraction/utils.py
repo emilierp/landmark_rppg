@@ -239,6 +239,56 @@ def get_magic_landmarks():
     """ returns high_priority and mid_priority list of landmarks identification number """
     return [*MagicLandmarks.forehead_center, *MagicLandmarks.cheek_left_bottom, *MagicLandmarks.cheek_right_bottom], [*MagicLandmarks.forehoead_right, *MagicLandmarks.forehead_left, *MagicLandmarks.cheek_left_top, *MagicLandmarks.cheek_right_top]
 
+class CustomLandmarks():
+
+  def __init__(self):
+    self.lower_medial_forehead = [10, 109, 108, 151, 337, 338]
+    self.left_lower_lateral_forehead = [67, 103, 104, 105, 66, 107, 108, 69]
+    self.right_lower_lateral_forehead = [297, 299, 337, 336, 296, 334, 333, 332]
+    self.glabella = [151, 108, 107, 55, 8, 285, 336, 337]
+    self.upper_nasal_dorsum = [8, 55, 193, 122, 196, 197, 419, 351, 417, 285]
+    self.lower_nasal_dorsum = [197, 196, 3, 51, 5, 281, 248, 419]
+    self.soft_triangle = [4, 45, 134, 220, 237, 44, 1, 274, 457, 440, 363, 275]
+    self.left_ala = [134, 131, 49, 102, 64, 219, 218, 237, 220]
+    self.right_ala = [363, 440, 457, 438, 439, 294, 331, 279, 360]
+    self.nasal_tip = [5, 51, 45, 4, 275, 281]
+    self.left_lower_nasal_sidewall = [3, 217, 126, 209, 131, 134]
+    self.right_lower_nasal_sidewall = [248, 363, 360, 429, 355, 437]
+    self.left_mid_nasal_sidewall = [188, 114, 217, 236, 196]
+    self.right_mid_nasal_sidewall = [412, 419, 456, 437, 343]
+    self.philtrum = [2, 97, 167, 37, 0, 267, 393, 326]
+    self.left_upper_lip = [97, 165, 185, 40, 39, 37, 167]
+    self.right_upper_lip = [326, 393, 267, 269, 270, 409, 391]
+    self.left_nasolabial_fold = [97, 98, 203, 186, 185, 165]
+    self.right_nasolabial_fold = [326, 391, 409, 410, 423, 327]
+    self.left_temporal = [54, 21, 162, 127, 116, 143, 156, 70, 63, 68]
+    self.right_temporal = [284, 298, 293, 300, 383, 372, 345, 356, 389, 251]
+    self.left_malar = [126, 100, 118, 117, 116, 123, 147, 187, 205, 203, 129, 209]
+    self.right_malar = [355, 429, 358, 423, 425, 411, 376, 352, 345, 346, 347, 329]
+    self.left_lower_cheek = [203, 205, 187, 147, 177, 215, 138, 172, 136, 135, 212, 186, 206]
+    self.right_lower_cheek = [423, 426, 410, 432, 364, 365, 397, 367, 435, 401, 376, 411, 425]
+    self.chin = [18, 83, 182, 194, 32, 140, 176, 148, 152, 377, 400, 369, 262, 418, 406, 313]
+    self.left_marionette_fold = [57, 212, 210, 169, 150, 149, 176, 140, 204, 43]
+    self.right_marionette_fold = [287, 273, 424, 369, 400, 378, 379, 394, 430, 432]
+  
+  def get_all_landmarks(self):
+    return self.__dict__
+
+  def get_all_landmarks_values(self):
+      all_values = []
+
+      for attribute_name in self.__dict__:
+        attribute = self.__dict__[attribute_name]
+        if isinstance(attribute, list):
+          all_values.extend(attribute)
+
+      # convert list of list to list of unique values
+      unique_values_set = set(all_values)
+      unique_values_list = list(unique_values_set)
+
+      return unique_values_list
+
+
 @njit(parallel=True)
 def draw_rects(image, xcenters, ycenters, xsides, ysides, color):
     """

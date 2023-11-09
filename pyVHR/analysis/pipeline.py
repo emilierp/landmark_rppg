@@ -37,7 +37,7 @@ class Pipeline():
                     cuda=True, 
                     roi_method='convexhull', 
                     roi_approach='holistic', 
-                    methods=['cpu_CHROM, cpu_POS, cpu_LGI'], 
+                    methods=['cpu_CHROM', 'cpu_POS', 'cpu_LGI'], 
                     estimate='holistic', 
                     movement_thrs=[10, 5, 2],
                     patch_size=30, 
@@ -98,7 +98,7 @@ class Pipeline():
         for m in methods:
             assert m in available_methods, "\nrPPG method not recognized!!"
 
-        if cuda:
+        if cuda and verb:
             sig_processing.display_cuda_device()
             sig_processing.choose_cuda_device(0)
         
@@ -114,7 +114,7 @@ class Pipeline():
         ## 2. set patches
         if roi_approach == 'patches':
             sig_processing.set_landmarks(ldmks_list)
-            sig_processing.set_square_patches_side(np.float(patch_size))
+            sig_processing.set_square_patches_side(float(patch_size))
         
         # set sig-processing and skin-processing params
         SignalProcessingParams.RGB_LOW_TH = RGB_LOW_HIGH_TH[0]
@@ -266,6 +266,7 @@ class Pipeline():
                     estimate='holistic', 
                     movement_thrs=[10, 5, 2],
                     patch_size=30, 
+                    total_frames=0,
                     RGB_LOW_HIGH_TH = (75,230),
                     Skin_LOW_HIGH_TH = (75, 230),
                     pre_filt=False, 
@@ -322,7 +323,7 @@ class Pipeline():
 
         assert method in available_methods, "\nrPPG method not recognized!!"
 
-        if cuda:
+        if cuda and verb:
             sig_processing.display_cuda_device()
             sig_processing.choose_cuda_device(0)
         
@@ -349,7 +350,7 @@ class Pipeline():
         if verb:
             print('\nProcessing Video ' + videoFileName)
         fps = get_fps(videoFileName)
-        sig_processing.set_total_frames(0)
+        sig_processing.set_total_frames(total_frames)
 
         ## 3. ROI selection
         if verb:
@@ -513,7 +514,7 @@ class Pipeline():
 
         # -- SIG processing
         sig_processing = SignalProcessing()
-        if eval(self.sigdict['cuda']):
+        if eval(self.sigdict['cuda']) and verb:
             sig_processing.display_cuda_device()
             sig_processing.choose_cuda_device(int(self.sigdict['cuda_device']))
         if verb:
@@ -532,10 +533,17 @@ class Pipeline():
         if verb:
             print(f" -  skin extractor: {self.sigdict['skin_extractor']}")
  
-        ## 2. set patches
+        ## 2. set patches             # CHANGED
         if self.sigdict['approach'] == 'patches':
             ldmks_list = ast.literal_eval(
-                self.sigdict['landmarks_list'])
+                    self.sigdict['landmarks_list'])
+            if type(ldmks_list[0]) == str:
+                all_landmarks = pyVHR.extraction.CustomLandmarks().get_all_landmarks()
+                ldmks_list = [all_landmarks[l] for l in ldmks_list]
+                ldmks_list = list(np.unique((sum(ldmks_list,[]))))
+                self.test_ldmks = True # still adding it here in case i forget to put it in cfg
+                if verb:
+                    print("Testing landmarks: ", self.sigdict['landmarks_list'])
             if len(ldmks_list) > 0:
                 sig_processing.set_landmarks(ldmks_list)
             if self.sigdict['patches'] == 'squares':
@@ -548,7 +556,7 @@ class Pipeline():
                     self.sigdict['rects_dims'])
                 if len(rects_dims) > 0:
                     sig_processing.set_rect_patches_sides(
-                        np.array(rects_dims, dtype=np.float32))
+                        np.array(rects_dims, dtype=np.float32))     
         if verb:
             print(f" -  ROI approach: {self.sigdict['approach']}")
         
@@ -724,6 +732,8 @@ class Pipeline():
                 res.addData('timeGT', timesGT)
                 res.addData('timeES', timesES)
                 res.addData('videoFilename', videoFileName)
+                if self.test_ldmks:
+                    res.addData('landmarks', self.sigdict['landmarks_list'])
                 res.addDataSerie()
                 if verb:
                     printErrors(RMSE, MAE, MAX, PCC, CCC, SNR)
@@ -747,6 +757,11 @@ class Pipeline():
         self.sigdict = dict(self.parser['SIG'].items())
         self.bvpdict = dict(self.parser['BVP'].items())
         self.bpmdict = dict(self.parser['BPM'].items())
+
+        # CHANGED
+        if "test_ldmks" in self.sigdict.keys():
+            self.test_ldmks =self.sigdict['test_ldmks']
+        else: self.test_ldmks = False
 
         # video idx list extraction
         if isinstance(ast.literal_eval(self.datasetdict['videoIdx']), list):

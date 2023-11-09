@@ -262,8 +262,7 @@ class StatAnalysis:
 
     offset = 50
     fig = go.Figure()
-
-    methods
+    
     for method in methods:
         yd = np.array(Y[method])
         name = method
