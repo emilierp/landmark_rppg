@@ -1,7 +1,6 @@
 # Ignore
 results/cfg
 results/h5
-results/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

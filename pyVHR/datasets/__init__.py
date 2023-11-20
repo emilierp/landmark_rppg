@@ -11,4 +11,3 @@ from .v4v import *
 from .vicar_ppg import *
 
 # Custom dataset
-from .lgi_ppgi_evm import *

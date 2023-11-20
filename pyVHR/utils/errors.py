@@ -17,7 +17,11 @@ def getErrors(bvps, fps, bpmES, bpmGT, timesES, timesGT):
     MAX = MAXError(bpmES, bpmGT, timesES, timesGT)
     PCC = PearsonCorr(bpmES, bpmGT, timesES, timesGT)
     CCC = LinCorr(bpmES, bpmGT, timesES, timesGT)
-    SNR = get_SNR(bvps, fps, bpmGT, timesES)
+    # Changed
+    try:
+        SNR = get_SNR(bvps, fps, bpmGT, timesES)
+    except:
+        SNR = np.array([np.nan])
 
     return RMSE, MAE, MAX, PCC, CCC, SNR
 
