@@ -369,6 +369,9 @@ class LandmarksPipeline():
         print("Landmarks list : ", self.sigdict['landmarks_list'])
         print("Landmarks config : ", ldmks_config)
 
+        
+        end_process = time.time()
+
         for ldmk_idx,ldmks_list in enumerate(ldmks_config):
             start_ldmk = time.time()
             if verb:
@@ -408,7 +411,7 @@ class LandmarksPipeline():
             print("Number of videos in folder : ", len(dataset.videoFilenames))
             print("Number of videos in index : ", len(self.videoIdx))
 
-            end_process = time.time()
+            end_ldmk = time.time()
                 
             # -- loop on videos
             for v in self.videoIdx:
@@ -549,8 +552,13 @@ class LandmarksPipeline():
                             bpmES = BPM_clustering(ma, bvps_win, fps, winSizeGT, movement_thrs=movement_thrs, opt_factor=0.5)
 
                         end_method = time.time() 
-                        time_requirement = (end_method-start_method) + (end_video-start_video) + (end_process-start_process)
-                    
+                        time_requirement = (end_method-start_method) + (end_video-start_video) + (end_ldmk - start_ldmk) + (end_process-start_process)
+                        # print(start_process, end_process, start_ldmk, end_ldmk, start_video, end_video, start_method, end_method)
+                        # print((end_method-start_method), (end_video-start_video), (end_ldmk - start_ldmk), (end_process-start_process))
+
+                        ## 9. error metrics
+                        RMSE, MAE, MAX, PCC, CCC, SNR = getErrors(bvps_win, fps, bpmES, bpmGT, timesES, timesGT)
+
                     except Exception as e:
                         print("error: ", e) 
                         RMSE, MAE, MAX, PCC, CCC, SNR, MAD = [np.nan], [np.nan], [np.nan], [np.nan], [np.nan], [np.nan], [np.nan]
@@ -559,9 +567,6 @@ class LandmarksPipeline():
                         videoFileName = dataset.getVideoFilename(v)
                         time_requirement = np.nan
                         continue
-
-                    ## 9. error metrics
-                    RMSE, MAE, MAX, PCC, CCC, SNR = getErrors(bvps_win, fps, bpmES, bpmGT, timesES, timesGT)
 
                     # -- save results
                     res.newDataSerie()
