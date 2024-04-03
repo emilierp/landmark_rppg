@@ -8,6 +8,8 @@ from numba import prange, njit
 import os
 import matplotlib.pyplot as plt
 
+from matplotlib.path import Path
+import random
 
 """
 This module defines classes or methods used for signal extraction.
@@ -89,8 +91,8 @@ def landmarks_mean(ldmks, im, square, RGB_LOW_TH, RGB_HIGH_TH):
     num_elems = np.zeros((ldmks.shape[0], ), dtype=np.float32)
     for ld_id in prange(0, r_ldmks.shape[0]):
         if r_ldmks[ld_id, 0] >= 0.0:
-            for x in prange(int(r_ldmks[ld_id, 0] - S), int(r_ldmks[ld_id, 0] + S + 1)):
-                for y in prange(int(r_ldmks[ld_id, 1] - S), int(r_ldmks[ld_id, 1] + S + 1)):
+            for x in prange(int(r_ldmks[ld_id, 0] - S), int(r_ldmks[ld_id, 0] + S + 1)): # y-coord, column
+                for y in prange(int(r_ldmks[ld_id, 1] - S), int(r_ldmks[ld_id, 1] + S + 1)): # x-coord, row
                     if x >= 0 and x < height and y >= 0 and y < width:
                         if not((im[x, y, 0] <= RGB_LOW_TH and im[x, y, 1] <= RGB_LOW_TH and im[x, y, 2] <= RGB_LOW_TH) or
                                (im[x, y, 0] >= RGB_HIGH_TH and im[x, y, 1] >= RGB_HIGH_TH and im[x, y, 2] >= RGB_HIGH_TH)):
@@ -102,6 +104,8 @@ def landmarks_mean(ldmks, im, square, RGB_LOW_TH, RGB_HIGH_TH):
                 r_ldmks[ld_id, 2] = lds_mean[ld_id, 0] / num_elems[ld_id]
                 r_ldmks[ld_id, 3] = lds_mean[ld_id, 1] / num_elems[ld_id]
                 r_ldmks[ld_id, 4] = lds_mean[ld_id, 2] / num_elems[ld_id]
+
+    # print("Pixel: ", (x,y), num_elems)
     return r_ldmks
 
 
@@ -265,4 +269,70 @@ def landmarks_median_custom_rect(ldmks, im, rects, RGB_LOW_TH, RGB_HIGH_TH):
                 r_ldmks[ld_id, 2] = np.int32(np.median(r[goodidx]))
                 r_ldmks[ld_id, 3] = np.int32(np.median(g[goodidx]))
                 r_ldmks[ld_id, 4] = np.int32(np.median(b[goodidx]))
+    return r_ldmks
+
+
+# Custom patch landmark
+# @njit(['float32[:,:](float32[:,:],uint8[:,:,:],float32[:,:], int32, int32)', ], parallel=True, fastmath=True, nogil=True)
+def landmarks_path_mean(ldmks, im, sampling_method, nb_sample_points, RGB_LOW_TH, RGB_HIGH_TH):
+    """
+    This method computes the RGB-Mean Signal excluding 'im' pixels
+    that are outside the RGB range [RGB_LOW_TH, RGB_HIGH_TH] (extremes are included).
+    It takes all pixels inside the polygon defined by the keypoints in the landmark.
+
+    Args: 
+        ldmks (float32 ndarray): landmakrs as ndarray with shape [num_landmarks, 5],
+             where the second dimension contains y-coord, x-coord, r-mean (value is not important), g-mean (value is not important), b-mean (value is not important).
+        im (uint8 ndarray): ndarray with shape [rows, columns, rgb_channels].
+        sampling_method: 'all' or 'random' or 'corner'. 'all': all pixels inside the polygon are used. 'random': nb_sample_points pixels are randomly sampled inside the polygon. 'corner': only the corner pixels are used.
+        RGB_LOW_TH (numpy.int32): RGB low threshold value.
+        RGB_HIGH_TH (numpy.int32): RGB high threshold value.
+    
+    Returns:
+        RGB-Mean Signal as float32 ndarray with shape [1, 5], where the second dimension contains _, _, r-mean, g-mean, b-mean.
+    """
+    def sort_coordinates(list_of_xy_coords):
+        cx, cy = list_of_xy_coords.mean(0)
+        x, y = list_of_xy_coords.T
+        angles = np.arctan2(x-cx, y-cy)
+        indices = np.argsort(angles)
+        return list_of_xy_coords[indices]
+    
+    ldmks = sort_coordinates(ldmks[:,0:2]) # works with (c,r) coordinates
+    r_ldmks = np.zeros((1,5), dtype=np.float32)
+    lds_mean = np.zeros(3, dtype=np.float32)
+
+    polygon_path = Path(ldmks[:,::-1]) # works with (r,c) coordinates
+    top_left = np.min(ldmks, axis=0).astype(int)
+    bottom_right = np.max(ldmks, axis=0).astype(int)
+
+    x, y = np.meshgrid(np.arange(top_left[1], bottom_right[1]+1), np.arange(top_left[0], bottom_right[0]+1)) # (c,r)
+    x, y = x.flatten(), y.flatten()
+    pixel_coordinates = np.vstack((x,y)).T
+    grid = polygon_path.contains_points(pixel_coordinates)
+    pixel_coordinates = pixel_coordinates[grid][:,::-1] # (r,c)
+    if sampling_method == 'all':
+        pass
+    elif sampling_method == 'random': # randomly sample from pixel_coordinates
+        nb_sample_points = min(nb_sample_points, len(pixel_coordinates))
+        pixel_coordinates = pixel_coordinates[np.random.choice(len(pixel_coordinates), nb_sample_points, replace=False)]
+    # if sampling_method == 'corner':
+    #     pixel_coordinates = ldmks.astype(int)
+    else:
+        raise ValueError('sampling must be either \'all\' or \'random\'', sampling_method)
+    pixel_coordinates = np.array(pixel_coordinates)
+    num_elems = len(pixel_coordinates)
+    
+    for (x,y) in pixel_coordinates:
+        if not((im[x, y, 0] <= RGB_LOW_TH and im[x, y, 1] <= RGB_LOW_TH and im[x, y, 2] <= RGB_LOW_TH) or
+                (im[x, y, 0] >= RGB_HIGH_TH and im[x, y, 1] >= RGB_HIGH_TH and im[x, y, 2] >= RGB_HIGH_TH)):
+            lds_mean[0] += np.float32(im[x, y, 0])
+            lds_mean[1] += np.float32(im[x, y, 1])
+            lds_mean[2] += np.float32(im[x, y, 2])
+
+    if num_elems > 1.0:
+        r_ldmks[:, 2] = lds_mean[0] / num_elems
+        r_ldmks[:, 3] = lds_mean[1] / num_elems
+        r_ldmks[:, 4] = lds_mean[2] / num_elems
+        
     return r_ldmks

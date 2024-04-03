@@ -55,6 +55,14 @@ class LGI_PPGI(Dataset):
         root = tree.getroot()
         last_vid_time = int(float(root[-1].find('value1').text))
 
+        diff = (last_bvp_time - last_vid_time)
+        if diff < 0:
+            print("adjust")
+        while diff < 0:
+            root = root[:-1]
+            last_vid_time = int(float(root[-1].find('value1').text))
+            diff = (last_bvp_time - last_vid_time)
+
         diff = ((last_bvp_time - last_vid_time)/1000)
 
         assert diff >= 0, 'Unusable data.'

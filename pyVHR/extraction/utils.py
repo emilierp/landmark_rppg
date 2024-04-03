@@ -6,6 +6,11 @@ import numpy as np
 from scipy.signal import welch, butter, filtfilt, iirnotch, freqz
 from sklearn.decomposition import PCA
 from scipy.stats import iqr, median_abs_deviation
+from itertools import chain, combinations
+import pandas as pd
+from matplotlib.path import Path
+
+
 
 class MotionAnalysis():
   """
@@ -239,37 +244,68 @@ def get_magic_landmarks():
     """ returns high_priority and mid_priority list of landmarks identification number """
     return [*MagicLandmarks.forehead_center, *MagicLandmarks.cheek_left_bottom, *MagicLandmarks.cheek_right_bottom], [*MagicLandmarks.forehoead_right, *MagicLandmarks.forehead_left, *MagicLandmarks.cheek_left_top, *MagicLandmarks.cheek_right_top]
 
+
 class CustomLandmarks():
 
   def __init__(self):
+    # self.lower_medial_forehead = [10, 109, 108, 151, 337, 338]
+    # self.left_lower_lateral_forehead = [67, 103, 104, 105, 66, 107, 108, 109]
+    # self.right_lower_lateral_forehead = [297, 338, 337, 336, 296, 334, 333, 332]
+    # self.glabella = [151, 108, 107, 55, 8, 285, 336, 337]
+    # self.upper_nasal_dorsum = [8, 55, 193, 122, 196, 197, 419, 351, 417, 285]
+    # self.lower_nasal_dorsum = [197, 196, 3, 51, 5, 281, 248, 419]
+    # self.soft_triangle = [4, 45, 134, 220, 237, 44, 1, 274, 457, 440, 363, 275]
+    # self.left_ala = [134, 131, 49, 102, 64, 219, 218, 237, 220]
+    # self.right_ala = [363, 440, 457, 438, 439, 294, 331, 279, 360]
+    # self.nasal_tip = [5, 51, 45, 4, 275, 281]
+    # self.left_lower_nasal_sidewall = [3, 217, 126, 209, 131, 134]
+    # self.right_lower_nasal_sidewall = [248, 363, 360, 429, 355, 437]
+    # self.left_mid_nasal_sidewall = [188, 114, 217, 236, 196]
+    # self.right_mid_nasal_sidewall = [412, 419, 456, 437, 343]
+    # self.philtrum = [2, 97, 167, 37, 0, 267, 393, 326]
+    # self.left_upper_lip = [97, 165, 185, 40, 39, 37, 167]
+    # self.right_upper_lip = [326, 393, 267, 269, 270, 409, 391]
+    # self.left_nasolabial_fold = [97, 98, 203, 186, 185, 165]
+    # self.right_nasolabial_fold = [326, 391, 409, 410, 423, 327]
+    # self.left_temporal = [54, 21, 162, 127, 116, 143, 156, 63, 68]
+    # self.right_temporal = [284, 298, 293, 383, 372, 345, 356, 389, 251]
+    # self.left_malar = [126, 100, 118, 117, 116, 123, 147, 187, 205, 203, 129, 209]
+    # self.right_malar = [355, 429, 358, 423, 425, 411, 376, 352, 345, 346, 347, 329]
+    # self.left_lower_cheek = [203, 205, 187, 147, 177, 215, 138, 172, 136, 135, 212, 186, 206]
+    # self.right_lower_cheek = [423, 426, 410, 432, 364, 365, 397, 367, 435, 401, 376, 411, 425]
+    # self.chin = [18, 83, 182, 194, 32, 140, 176, 148, 152, 377, 400, 369, 262, 418, 406, 313]
+    # self.left_marionette_fold = [57, 212, 210, 169, 150, 149, 176, 140, 204, 43]
+    # self.right_marionette_fold = [287, 273, 424, 369, 400, 378, 379, 394, 430, 432]
+    
     self.lower_medial_forehead = [10, 109, 108, 151, 337, 338]
-    self.left_lower_lateral_forehead = [67, 103, 104, 105, 66, 107, 108, 69]
-    self.right_lower_lateral_forehead = [297, 299, 337, 336, 296, 334, 333, 332]
+    self.left_lower_lateral_forehead = [67, 103, 104, 105, 66, 107, 108, 109]
+    self.right_lower_lateral_forehead = [297, 338, 337, 336, 296, 334, 333, 332]
     self.glabella = [151, 108, 107, 55, 8, 285, 336, 337]
     self.upper_nasal_dorsum = [8, 55, 193, 122, 196, 197, 419, 351, 417, 285]
-    self.lower_nasal_dorsum = [197, 196, 3, 51, 5, 281, 248, 419]
+    self.lower_nasal_dorsum = [196, 197, 419, 248, 281, 5, 51, 3]
     self.soft_triangle = [4, 45, 134, 220, 237, 44, 1, 274, 457, 440, 363, 275]
-    self.left_ala = [134, 131, 49, 102, 64, 219, 218, 237, 220]
-    self.right_ala = [363, 440, 457, 438, 439, 294, 331, 279, 360]
-    self.nasal_tip = [5, 51, 45, 4, 275, 281]
-    self.left_lower_nasal_sidewall = [3, 217, 126, 209, 131, 134]
-    self.right_lower_nasal_sidewall = [248, 363, 360, 429, 355, 437]
-    self.left_mid_nasal_sidewall = [188, 114, 217, 236, 196]
-    self.right_mid_nasal_sidewall = [412, 419, 456, 437, 343]
-    self.philtrum = [2, 97, 167, 37, 0, 267, 393, 326]
-    self.left_upper_lip = [97, 165, 185, 40, 39, 37, 167]
-    self.right_upper_lip = [326, 393, 267, 269, 270, 409, 391]
-    self.left_nasolabial_fold = [97, 98, 203, 186, 185, 165]
-    self.right_nasolabial_fold = [326, 391, 409, 410, 423, 327]
-    self.left_temporal = [54, 21, 162, 127, 116, 143, 156, 70, 63, 68]
-    self.right_temporal = [284, 298, 293, 300, 383, 372, 345, 356, 389, 251]
-    self.left_malar = [126, 100, 118, 117, 116, 123, 147, 187, 205, 203, 129, 209]
-    self.right_malar = [355, 429, 358, 423, 425, 411, 376, 352, 345, 346, 347, 329]
-    self.left_lower_cheek = [203, 205, 187, 147, 177, 215, 138, 172, 136, 135, 212, 186, 206]
-    self.right_lower_cheek = [423, 426, 410, 432, 364, 365, 397, 367, 435, 401, 376, 411, 425]
-    self.chin = [18, 83, 182, 194, 32, 140, 176, 148, 152, 377, 400, 369, 262, 418, 406, 313]
-    self.left_marionette_fold = [57, 212, 210, 169, 150, 149, 176, 140, 204, 43]
-    self.right_marionette_fold = [287, 273, 424, 369, 400, 378, 379, 394, 430, 432]
+    self.left_ala = [49, 131, 134, 220, 237, 218, 219, 64, 102]
+    self.right_ala = [440, 363, 360, 279, 331, 294, 439, 438, 457]
+    self.nasal_tip = [51, 5, 281, 275, 4, 45, 51]
+    self.left_lower_nasal_sidewall = [126, 217, 3, 134, 131, 209]
+    self.right_lower_nasal_sidewall = [248, 437, 355, 429, 360, 363]
+    self.left_mid_nasal_sidewall = [114, 188, 196, 236, 217]
+    self.right_mid_nasal_sidewall = [419, 412, 343, 437, 456]
+    self.philtrum = [167, 97, 2, 326, 393, 267, 0, 37]
+    self.left_upper_lip = [165, 97, 167, 37, 39, 40, 185]
+    self.right_upper_lip = [393, 326, 391, 409, 270, 269, 267]
+    self.left_nasolabial_fold = [203, 98, 97, 165, 185, 186]
+    self.right_nasolabial_fold = [326, 327, 423, 410, 409, 391]
+    self.left_temporal = [21, 54, 68, 63, 156, 143, 116, 127, 162]
+    self.right_temporal = [293, 298, 284, 251, 389, 356, 345, 372, 383]
+    self.left_malar = [116, 117, 118, 100, 126, 209, 129, 203, 205, 187, 147, 123]
+    self.right_malar = [429, 355, 329, 347, 346, 345, 352, 376, 411, 425, 423, 358]
+    self.left_lower_cheek = [177, 147, 187, 205, 203, 206, 186, 212, 136, 135, 172, 138, 215]
+    self.right_lower_cheek = [426, 423, 425, 411, 376, 401, 435, 367, 397, 364, 365, 432, 410]
+    self.chin = [32, 194, 182, 83, 18, 313, 406, 418, 262, 369, 400, 377, 152, 148, 176, 140]
+    self.left_marionette_fold = [210, 212, 57, 43, 204, 140, 176, 149, 150, 169]
+    self.right_marionette_fold = [424, 273, 287, 432, 430, 394, 379, 378, 400, 369]
+
   
   def get_all_landmarks(self):
     return self.__dict__
@@ -287,6 +323,108 @@ class CustomLandmarks():
       unique_values_list = list(unique_values_set)
 
       return unique_values_list
+  
+
+  def get_patch_vertices(self, landmark):
+    """
+    Returns the vertices of a patch
+    """
+
+    # get patch_name from list of landmarks
+    patch_name = [key for key, value in self.__dict__.items() if landmark == value][0]
+
+    patch_vertices = {
+      'lower_medial_forehead': [10, 109, 108, 151, 337, 338],
+      'right_lower_lateral_forehead': [297, 338, 337, 336, 296, 334, 333, 332],
+      'left_lower_lateral_forehead':  [67, 103, 104, 105, 66, 107, 108, 109],
+      'soft_triangle': [4, 45, 134, 220, 237, 44, 1, 274, 457, 440, 363, 275],
+      'glabella': [151, 108, 107, 55, 8, 285, 336, 337],
+      'upper_nasal_dorsum': [8, 55, 193, 122, 196, 197, 419, 351, 417, 285],
+      'lower_nasal_dorsum': [196, 197, 419, 248, 281, 5, 51, 3],
+      'left_ala': [49, 131, 134, 220, 237, 218, 219, 64, 102],
+      'right_ala': [440, 363, 360, 279, 331, 294, 439, 438, 457],
+      'nasal_tip': [51, 5, 281, 275, 4, 45, 51],
+      'left_lower_nasal_sidewall': [126, 217, 3, 134, 131, 209],
+      'right_lower_nasal_sidewall': [248, 437, 355, 429, 360, 363],
+      'left_mid_nasal_sidewall': [114, 188, 196, 236, 217],
+      'right_mid_nasal_sidewall': [419, 412, 343, 437, 456],
+      'philtrum': [167, 97, 2, 326, 393, 267, 0, 37],
+      'left_upper_lip' : [165, 97, 167, 37, 39, 40, 185],
+      'right_upper_lip' : [393, 326, 391, 409, 270, 269, 267],
+      'left_nasolabial_fold' : [203, 98, 97, 165, 185, 186],
+      'right_nasolabial_fold' : [326, 327, 423, 410, 409, 391],
+      'left_temporal' : [21, 54, 68, 63, 156, 143, 116, 127, 162],
+      'right_temporal' : [293, 298, 284, 251, 389, 356, 345, 372, 383],
+      'left_malar' : [116, 117, 118, 100, 126, 209, 129, 203, 205, 187, 147, 123],
+      'right_malar' : [429, 355, 329, 347, 346, 345, 352, 376, 411, 425, 423, 358],
+      'left_lower_cheek' : [177, 147, 187, 205, 203, 206, 186, 212, 136, 135, 172, 138, 215],
+      'right_lower_cheek' : [426, 423, 425, 411, 376, 401, 435, 367, 397, 364, 365, 432, 410],
+      'chin' : [32, 194, 182, 83, 18, 313, 406, 418, 262, 369, 400, 377, 152, 148, 176, 140],
+      'left_marionette_fold' : [210, 212, 57, 43, 204, 140, 176, 149, 150, 169],
+      'right_marionette_fold' : [424, 273, 287, 432, 430, 394, 379, 378, 400, 369],
+
+    }
+
+    return patch_vertices[patch_name]
+
+  
+  def get_rois(self):
+    
+    return {
+       'forehead': ['lower_medial_forehead','glabella','left_lower_lateral_forehead','right_lower_lateral_forehead'],
+       'nose': ['upper_nasal_dorsum','lower_nasal_dorsum','left_mid_nasal_sidewall','right_mid_nasal_sidewall','left_lower_nasal_sidewall','right_lower_nasal_sidewall','nasal_tip','soft_triangle','left_ala','right_ala'],
+       'cheeks':['left_malar','right_malar', 'left_lower_cheek','right_lower_cheek'],
+       'jaw':['left_marionette_fold','right_marionette_fold','chin'],
+       'temple':['left_temporal','right_temporal'],
+       'mustache':['left_nasolabial_fold','right_nasolabial_fold','left_upper_lip','right_upper_lip','philtrum'],
+       }
+  
+  def get_valid_combinations(self, min_len=2, max_len=3, roi=None):
+    """
+      Returns a list of valid combinations of landmarks for a given roi
+      max_len == -1: take all landmarks of max length
+    """
+    all_landmarks = self.get_all_landmarks()
+    if roi is None: # select all landmarks
+      landmarks = list(all_landmarks.keys())
+    else: # select landmarks of a given roi
+      landmarks = list(self.get_rois()[roi])
+    
+    if max_len == -1:
+      max_len = len(landmarks)
+
+    combs = list(chain.from_iterable(combinations(landmarks, r) for r in range(min_len,max_len+1)))
+    combs = [list(i) for i in combs]
+
+    valid_combs = []
+    for comb in combs:
+        valid = True
+        if 'left' in ','.join(comb): # ex: left_malar, left_lower_cheek --> left_malar, left_lower_cheek, right_malar, right_lower_cheek
+            lefts = [s for s in comb if 'left' in s]
+            for elem in lefts:
+                if '_'.join(['right']+elem.split('_')[1:]) not in comb:
+                    valid = False
+                    break
+        if 'right' in ','.join(comb):
+            rights = [s for s in comb if 'right' in s]
+            for elem in rights:
+                if '_'.join(['left']+elem.split('_')[1:]) not in comb:
+                    valid = False
+                    break
+        if valid:
+            valid_combs.append(comb)
+
+    df_combs = pd.DataFrame()
+    df_combs['names'] = valid_combs
+    df_combs['names'] = df_combs['names'].apply(lambda x: tuple(x))
+    # get the corresponding landmarks values and remove duplicates
+    df_combs['values'] = df_combs['names'].apply(lambda x: list(set(list(chain.from_iterable( [all_landmarks[elem] for elem in x])))))
+
+    print(f"Number of possible combination of landmarks with {min_len} ROI (considering symmetry)", df_combs.shape[0])
+
+
+    return df_combs, valid_combs
+
 
 
 @njit(parallel=True)
@@ -317,6 +455,27 @@ def draw_rects(image, xcenters, ycenters, xsides, ysides, color):
                 image[y, rightx, 0] = color[0]
                 image[y, rightx, 1] = color[1]
                 image[y, rightx, 2] = color[2]
+    return image
+
+# Custom landmark patch
+# @njit(parallel=True) TODO
+def draw_patch(image, ldmks, color=[255, 0, 0]):
+    """
+    This method is used to draw the outlines of patch defined by keypoints.
+    """
+    def sort_coordinates(list_of_xy_coords):
+        cx, cy = list_of_xy_coords.mean(0)
+        x, y = list_of_xy_coords.T
+        angles = np.arctan2(x-cx, y-cy)
+        indices = np.argsort(angles)
+        return list_of_xy_coords[indices]
+    
+    ldmks = sort_coordinates(ldmks)
+    polygon_path = Path(ldmks[:,0:2][:,::-1])
+    vertices = np.append(polygon_path.vertices, [polygon_path.vertices[0]], axis=0)
+
+    for idx in prange(len(vertices[:-1])):
+        cv2.line(image, vertices[idx].astype(int), vertices[idx+1].astype(int), color, thickness=2)
     return image
 
 def sig_windowing(sig, wsize, stride, fps):

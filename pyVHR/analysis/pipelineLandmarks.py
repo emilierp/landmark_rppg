@@ -19,6 +19,8 @@ import os.path
 from pyVHR.deepRPPG.mtts_can import *
 from pyVHR.deepRPPG.hr_cnn import *
 from pyVHR.extraction.utils import *
+from dtw import *
+import scipy.signal
 
 class LandmarksPipeline():
     """ 
@@ -31,6 +33,289 @@ class LandmarksPipeline():
     def __init__(self):
         self.res = None
 
+    def run_on_video_dtw(self, videoFileName, 
+                    winsize, 
+                    bpmGT,
+                    timesGT,
+                    sigGT,
+                    ldmks_list=None,
+                    cuda=True, 
+                    roi_method='convexhull', 
+                    roi_approach='landmark', 
+                    methods=['cupy_CHROM',], 
+                    estimate='median', 
+                    movement_thrs=[10, 5, 2],
+                    patch_size=30, 
+                    RGB_LOW_HIGH_TH = (0,240),
+                    Skin_LOW_HIGH_TH = (0, 240),
+                    pre_filt=True, 
+                    post_filt=True, 
+                    verb=True):
+        """ 
+        Runs the pipeline on a specific video file.
+
+        Args:
+            videoFileName:
+                - The video filenane to analyse
+            winsize:
+                - The size of the window in frame
+            ldmks_list:
+                - (default None) a list of custom landmakrs to uses
+            cuda:
+                - True - Enable computations on GPU
+            roi_method:
+                - 'convexhull', uses MediaPipe's lanmarks to compute the convex hull on the face skin
+                - 'faceparsing', uses BiseNet to parse face components and segment the skin
+            roi_approach:
+                - 'holistic', uses the holistic approach, i.e. the whole face skin
+                - 'patches', uses multiple patches as Regions of Interest
+                - 'landmark., uses patch defined by landmark as ROI
+            methods:
+                - A collection of rPPG methods defined in pyVHR
+            estimate:
+                - if patches: 'medians', 'clustering', the method for BPM estimate on each window 
+            movement_thrs:
+                - Thresholds for movements filtering (eg.:[10, 5, 2])
+            patch_size:
+                - the size of the square patch, in pixels
+            RGB_LOW_HIGH_TH: 
+                - default (75,230), thresholds for RGB channels 
+            Skin_LOW_HIGH_TH:
+                - default (75,230), thresholds for skin pixel values 
+            pre_filt:
+                - True, uses bandpass filter on the windowed RGB signal
+            post_filt:
+                - True, uses bandpass filter on the estimated BVP signal
+            verb:
+                - True, shows the main steps  
+        """
+
+        # -- catch data (object)
+        res = TestResult()
+
+        # set landmark list
+        if not ldmks_list:
+            ldmks_list = ['chin']
+        
+        # test video filename
+        assert os.path.isfile(videoFileName), "The video file does not exists!"
+        if verb:
+            print("Video: ", videoFileName)
+
+        sig_processing = SignalProcessing()
+        av_meths = getmembers(pyVHR.BVP.methods, isfunction)
+        available_methods = [am[0] for am in av_meths]
+
+        for m in methods:
+            assert m in available_methods, "\nrPPG method not recognized!!"
+
+        if cuda and verb:
+            # sig_processing.display_cuda_device()
+            sig_processing.choose_cuda_device(0)
+
+        ## 1. set skin extractor
+        target_device = 'GPU' if cuda else 'CPU'
+        if roi_method == 'convexhull':
+            sig_processing.set_skin_extractor(SkinExtractionConvexHull(target_device))
+        elif roi_method == 'faceparsing':
+            sig_processing.set_skin_extractor(SkinExtractionFaceParsing(target_device))
+        else:
+            raise ValueError("Unknown 'roi_method'")
+              
+        ## 2. set patches # CHANGED , suppose only custom landmarks
+        if roi_approach == 'patches' or roi_approach == 'landmark':
+            if len(ldmks_list) == 0: # take all landmarks
+                ldmks_list = [
+                    x for x in list(pyVHR.extraction.CustomLandmarks().__dict__)
+                ]
+            all_landmarks  = pyVHR.extraction.CustomLandmarks().get_all_landmarks()
+            ldmk_values = list(np.unique(sum([all_landmarks[ldmk] for ldmk in ldmks_list], [])))
+            sig_processing.set_landmarks(ldmk_values)
+            sig_processing.set_square_patches_side(float(patch_size))
+
+        if verb:
+            print(f"Landmarks list : {ldmks_list}")
+
+        # set sig-processing and skin-processing params
+        SignalProcessingParams.RGB_LOW_TH = RGB_LOW_HIGH_TH[0]
+        SignalProcessingParams.RGB_HIGH_TH = RGB_LOW_HIGH_TH[1]
+        SkinProcessingParams.RGB_LOW_TH = Skin_LOW_HIGH_TH[0]
+        SkinProcessingParams.RGB_HIGH_TH = Skin_LOW_HIGH_TH[1]
+
+        if verb:
+            print('\nProcessing Video ' + videoFileName)
+        fps = get_fps(videoFileName)
+        sig_processing.set_total_frames(0)
+
+        ## Window GT
+        sigFPS = 60
+        PPG = sigGT.data.T.reshape(-1,1,1) # shape (n,nb_ldmk,RGB)
+        # PPG = (PPG - np.mean(PPG)) / np.std(PPG) # standardize PPG
+        # PPG = (PPG - np.min(PPG)) / (np.max(PPG) - np.min(PPG)) # normalize PPG [0,1]
+        PPG = (PPG - np.min(PPG)) / (np.max(PPG) - np.min(PPG)) * 2 - 1 # normalize PPG [-1,1]
+
+        PPG_win, timesGTwin = sig_windowing(PPG, winsize, 1, sigFPS)
+        PPG_win = np.array([PPG_win[i].reshape(-1) for i in range(len(PPG_win))]) # from (n,1,1,m) to (n,m) PPG_win
+        PPG_win = [scipy.signal.resample(PPG_win[i], int(fps/sigFPS*PPG_win[i].shape[-1]), axis=0) for i in range(len(PPG_win))]
+
+
+        ## 3. ROI selection
+        sig = []
+        if roi_approach == 'holistic':
+            # SIG extraction with holistic
+            sig = sig_processing.extract_holistic(videoFileName)
+        elif roi_approach == 'patches':
+            # SIG extraction with patches
+            sig = sig_processing.extract_patches(videoFileName, 'squares', 'mean')
+        elif roi_approach == 'landmark':
+            # SIG extraction with landmark patches
+            sig = sig_processing.extract_patches(videoFileName, 'landmark', 'mean')
+
+        ## 4. sig windowing
+        windowed_sig, timesES = sig_windowing(sig, winsize, 1, fps)
+        if verb:
+            print(f" - Extraction approach: {roi_approach} with {len(windowed_sig)} windows")
+
+        ## 5. PRE FILTERING
+        filtered_windowed_sig = windowed_sig
+        
+        # -- color threshold - applied only with patches
+        # if roi_approach == 'patches':
+        #    filtered_windowed_sig = apply_filter(windowed_sig,
+        #                                        rgb_filter_th,
+        #                                        params={'RGB_LOW_TH': RGB_LOW_HIGH_TH[0],
+        #                                                'RGB_HIGH_TH': RGB_LOW_HIGH_TH[1]})
+
+        if pre_filt:
+            module = import_module('pyVHR.BVP.filters')
+            method_to_call = getattr(module, 'BPfilter')
+            filtered_windowed_sig = apply_filter(filtered_windowed_sig,
+                                                    method_to_call, 
+                                                    fps=fps, 
+                                                    params={'minHz':self.minHz, 
+                                                            'maxHz':self.maxHz, 
+                                                            'fps':'adaptive', 
+                                                            'order':6})
+
+        ## 6. BVP extraction multimethods
+        bvps_win = []
+        for method in methods:
+            start_method = time.time()
+            try:
+                if verb:
+                    print(" - Extraction method: " + method)
+                module = import_module('pyVHR.BVP.methods')
+                method_to_call = getattr(module, method)
+                
+                if 'cpu' in method:
+                    method_device = 'cpu'
+                elif 'torch' in method:
+                    method_device = 'torch'
+                elif 'cupy' in method:
+                    method_device = 'cuda'
+
+                if 'POS' in method:
+                    pars = {'fps':'adaptive'}
+                elif 'PCA' in method or 'ICA' in method:
+                    pars = {'component': 'all_comp'}
+                else:
+                    pars = {}
+
+                bvps_win = RGB_sig_to_BVP(filtered_windowed_sig, 
+                                        fps, device_type=method_device, 
+                                        method=method_to_call, params=pars)
+
+                ## 7. POST FILTERING
+                if post_filt:
+                    module = import_module('pyVHR.BVP.filters')
+                    method_to_call = getattr(module, 'BPfilter')
+                    bvps_win = apply_filter(bvps_win, 
+                                        method_to_call, 
+                                        fps=fps, 
+                                        params={'minHz':self.minHz, 'maxHz':self.maxHz, 'fps':'adaptive', 'order':6})
+
+                ## 8. BPM extraction
+
+                if roi_approach == 'holistic':
+                    if cuda:
+                        bpmES = BVP_to_BPM_cuda(bvps_win, fps, minHz=self.minHz, maxHz=self.maxHz)
+                    else:
+                        bpmES = BVP_to_BPM(bvps_win, fps, minHz=self.minHz, maxHz=self.maxHz)
+
+                elif roi_approach == 'patches':
+                    if estimate == 'clustering':
+                        #if cuda and False:
+                        #    bpmES = BVP_to_BPM_PSD_clustering_cuda(bvps_win, fps, minHz=self.minHz, maxHz=self.maxHz)
+                        #else:
+                        #bpmES = BPM_clustering(sig_processing, bvps_win, winsize, movement_thrs=[15, 15, 15], fps=fps, opt_factor=0.5)
+                        ma = MotionAnalysis(sig_processing, winsize, fps)
+                        bpmES = BPM_clustering(ma, bvps_win, fps, winsize, movement_thrs=movement_thrs, opt_factor=0.5)
+
+                    elif estimate == 'median':
+                        if cuda:
+                            bpmES = BVP_to_BPM_cuda(bvps_win, fps, minHz=self.minHz, maxHz=self.maxHz)
+                        else:
+                            bpmES = BVP_to_BPM(bvps_win, fps, minHz=self.minHz, maxHz=self.maxHz)
+                        bpmES, MAD = BPM_median(bpmES)
+                    if verb:
+                        print(f" - roi approach: {roi_approach} ({estimate}) ({ldmks_list})")
+               
+                elif roi_approach == 'landmark':
+                    if cuda:
+                        bpmES = BVP_to_BPM_cuda(bvps_win, fps, minHz=self.minHz, maxHz=self.maxHz)
+                    else:
+                        bpmES = BVP_to_BPM(bvps_win, fps, minHz=self.minHz, maxHz=self.maxHz)
+                else:
+                    raise ValueError("Estimation approach unknown!")
+
+                ## 9. error metrics
+                RMSE, MAE, MAX, PCC, CCC, SNR = getErrors(bvps_win, fps, bpmES, bpmGT, timesES, timesGT)
+
+                # DTW
+                bvps_median = np.median(bvps_win, axis=1) # median of all estimates
+                DTW = []
+                normDTW = []
+                CC = []
+                for w in range(min(len(bvps_median), len(PPG_win))):
+                    alignment = dtw(bvps_median[w], PPG_win[w], keep_internals=True)
+                    DTW.append(alignment.distance)
+                    normDTW.append(alignment.normalizedDistance)
+                    r, p = stats.pearsonr(PPG_win[w], bvps_median[w])
+                    CC.append(r)
+
+            except Exception as e:
+                print("Error: ", e)
+                RMSE, MAE, MAX, PCC, CCC, SNR, MAD = [np.nan], [np.nan], [np.nan], [np.nan], [np.nan], [np.nan], [np.nan]
+                DTW, normDTW, CC = [np.nan], [np.nan], [np.nan]
+                bpmGT, bpmES, timesGT, timesES = np.nan, np.nan, np.nan, np.nan
+                
+            # -- save results
+            res.newDataSerie()
+            res.addData('method', str(method))
+            res.addData('RMSE', RMSE)
+            res.addData('MAE', MAE)
+            res.addData('MAX', MAX)
+            res.addData('PCC', PCC)
+            res.addData('CCC', CCC)
+            res.addData('SNR', SNR)
+            res.addData('MAD', MAD)
+            res.addData('bpmGT', bpmGT)
+            res.addData('bpmES', bpmES)
+            res.addData('DTW', DTW)
+            res.addData('normDTW', normDTW)
+            res.addData('PPG_PCC', CC)
+            res.addData('timeGT', timesGT)
+            res.addData('timeES', timesES)
+            res.addData('videoFilename', videoFileName)
+            res.addData('landmarks', ldmks_list)
+            res.addDataSerie()
+            self.res = res
+
+            if verb:
+                printErrors(RMSE, MAE, MAX, PCC, CCC, SNR)
+
+        return res  
+
     def run_on_video_multimethods(self, videoFileName, 
                     winsize, 
                     bpmGT,
@@ -39,7 +324,7 @@ class LandmarksPipeline():
                     cuda=True, 
                     roi_method='convexhull', 
                     roi_approach='patches', 
-                    methods=['cupy_CHROM', 'cpu_POS', 'cpu_LGI'], 
+                    methods=['cupy_CHROM',], 
                     estimate='median', 
                     movement_thrs=[10, 5, 2],
                     patch_size=30, 
@@ -85,6 +370,7 @@ class LandmarksPipeline():
             verb:
                 - True, shows the main steps  
         """
+        
         # -- catch data (object)
         res = TestResult()
 
@@ -677,6 +963,9 @@ class TestResult():
         D['SNR'] = ''
         D['MAX'] = ''
         D['MAD'] = ''
+        D['DTW'] = ''
+        D['normDTW'] = ''
+        D['PPG_PCC'] = ''          
         D['bpmGT'] = ''             # GT bpm
         D['bpmES'] = ''
         D['bpmES_mad'] = ''

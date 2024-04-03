@@ -411,6 +411,33 @@ class StatAnalysis:
 
     return Y
 
+  def __getDataMono(self):
+    mag = self.mag
+    metric = self.metric
+    methods = self.methods
+    
+    frame = self.dataFrame[0]
+
+    # -- loop on methods
+    Y = []
+    
+    for method in methods:
+        vals = frame[frame['method'] == method][metric]
+        if mag == 'min':
+            data = [v[np.argmin(v)] for v in vals]
+        else:
+            data = [v[np.argmax(v)] for v in vals]
+        Y.append(data)
+
+    if self.remove_outliers:
+        res = pd.DataFrame(np.array(Y).T)
+        res = self.__remove_outliers(res)
+        res = res.to_numpy()
+    else:
+        res = np.array(Y).T
+        
+    return res
+
   def __getMethods(self):
 
     mets = []

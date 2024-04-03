@@ -313,34 +313,59 @@ class SignalProcessing():
             return
         self.rects = rects_dim
 
+    # Custom patches added
+
+    def set_patch_sampling(self, sampling_method, nb_sample_points):
+        """
+        Set the sampling method used when defining landmark shaped patches.
+        If sampling_method is 'all', all the points in the contour outlined by the landmark keypoints will be used.
+        Args:
+            sampling_method (str): 'all' or 'random'. If 'random', it samples nb_sample_points points from the inside.
+            nb_sample_points (int): number of points to sample from the inside of the patch.
+        """
+        if sampling_method != 'all' and nb_sample_points < 0:  
+            print("[ERROR] num_points must be a positive integer!")
+            return
+        self.sampling_method = sampling_method
+        self.nb_sample_points = nb_sample_points
+
+
     def extract_patches(self, videoFileName, region_type, sig_extraction_method):
         """
         This method compute the RGB-mean signal using specific skin regions (patches).
 
         Args:
             videoFileName (str): video file name or path.
-            region_type (str): patches types can be  "squares" or "rects".
+            region_type (str): patches types can be  "squares" or "rects" or "ladndmark".
+                            "landmark": take one patch for the contour outlined by the keypoints defining the landmark (ex: glabella)
+                                TODO For now this only allows for one landmark to be selected
             sig_extraction_method (str): RGB signal can be computed with "mean" or "median". We recommend to use mean.
 
         Returns: 
             float32 ndarray: RGB signal as ndarray with shape [num_frames, num_patches, rgb_channels].
         """
-        if self.square is None and self.rects is None:
+        if self.square is None and self.rects is None and region_type != "landmark":
             print(
                 "[ERROR] Use set_landmarks_squares or set_landmarkds_rects before calling this function!")
             return None
-        if region_type != "squares" and region_type != "rects":
+        if region_type == 'landmark' and self.sampling_method is None:
+            print("[ERROR] Use set_patch_sampling before calling this function!")
+            return None
+        if region_type != "squares" and region_type != "rects" and region_type != "landmark":
             print("[ERROR] Invalid landmarks region type!")
             return None
         if sig_extraction_method != "mean" and sig_extraction_method != "median":
             print("[ERROR] Invalid signal extraction method!")
             return None
+        depth = lambda L: isinstance(L, list) and max(map(depth, L))+1
+        if region_type == 'landmark' and depth(self.ldmks) != 2:
+            raise ValueError('For landmark shaped patches, the list of landmarks must be 2D (e.g. [[1,2,3],[4,5,6]])')
 
         ldmks_regions = None
         if region_type == "squares":
             ldmks_regions = np.float32(self.square)
         elif region_type == "rects":
-            ldmks_regions = np.float32(self.rects)
+            ldmks_regions = np.float32(self.rects)            
 
         sig_ext_met = None
         if sig_extraction_method == "mean":
@@ -348,12 +373,13 @@ class SignalProcessing():
                 sig_ext_met = landmarks_mean
             elif region_type == "rects":
                 sig_ext_met = landmarks_mean_custom_rect
+            elif region_type == 'landmark':
+                sig_ext_met = landmarks_path_mean
         elif sig_extraction_method == "median":
             if region_type == "squares":
                 sig_ext_met = landmarks_median
             elif region_type == "rects":
                 sig_ext_met = landmarks_median_custom_rect
-
         self.visualize_skin_collection = []
         self.visualize_landmarks_collection = []
 
@@ -387,7 +413,7 @@ class SignalProcessing():
                 results = face_mesh.process(image)
                 if results.multi_face_landmarks:
                     face_landmarks = results.multi_face_landmarks[0]
-                    landmarks = [l for l in face_landmarks.landmark]
+                    landmarks = [l for l in face_landmarks.landmark] # 468 Mediapipe keypoints
                     for idx in range(len(landmarks)):
                         landmark = landmarks[idx]
                         if not ((landmark.HasField('visibility') and landmark.visibility < VISIBILITY_THRESHOLD)
@@ -411,16 +437,30 @@ class SignalProcessing():
                     self.cropped_skin_im_shapes[1].append(cropped_skin_im.shape[1])
 
                 ### sig computing ###
-                for idx in self.ldmks:
-                    magic_ldmks.append(ldmks[idx])
-                magic_ldmks = np.array(magic_ldmks, dtype=np.float32)
-                temp = sig_ext_met(magic_ldmks, full_skin_im, ldmks_regions,
-                                   np.int32(SignalProcessingParams.RGB_LOW_TH), 
-                                   np.int32(SignalProcessingParams.RGB_HIGH_TH))
+                if region_type == 'squares' or region_type == 'rects':
+                    for idx in self.ldmks:
+                        magic_ldmks.append(ldmks[idx])  # coordinates of selected landmarks keypoints
+                    magic_ldmks = np.array(magic_ldmks, dtype=np.float32)
+                    temp = sig_ext_met(magic_ldmks, full_skin_im, ldmks_regions,
+                            np.int32(SignalProcessingParams.RGB_LOW_TH), 
+                            np.int32(SignalProcessingParams.RGB_HIGH_TH))
+                elif region_type == 'landmark':
+                    for region in self.ldmks:
+                        keypoints = np.empty((len(region), 5))
+                        for i,idx in enumerate(region):
+                            keypoints[i] = ldmks[idx]
+                        magic_ldmks.append(keypoints)  # coordinates of selected landmarks keypoints
+                    temp = np.empty((len(magic_ldmks),5))
+                    for i,patch in enumerate(magic_ldmks):
+                        temp[i,:] = landmarks_path_mean(patch, full_skin_im, self.sampling_method, self.nb_sample_points,
+                                                        np.int32(SignalProcessingParams.RGB_LOW_TH), np.int32(SignalProcessingParams.RGB_HIGH_TH))                        
                 sig.append(temp)
 
                 # save landmarks coordinates
-                self.patch_landmarks.append(magic_ldmks[:,0:3])
+                if region_type == 'squares' or region_type == 'rects':
+                    self.patch_landmarks.append(magic_ldmks[:,0:3])
+                elif region_type == 'landmark':
+                    self.patch_landmarks.append([magic_ldmk[:,0:2] for magic_ldmk in magic_ldmks])
 
                 # visualize patches and skin
                 if self.visualize_skin == True:
@@ -428,8 +468,10 @@ class SignalProcessing():
                 if self.visualize_landmarks == True:
                     annotated_image = full_skin_im.copy()
                     color = np.array([self.font_color[0],
-                                      self.font_color[1], self.font_color[2]], dtype=np.uint8)
-                    for idx in self.ldmks:
+                                    self.font_color[1], self.font_color[2]], dtype=np.uint8)
+                    keypoints = self.ldmks
+                    if region_type == 'landmark': keypoints = np.unique(sum(self.ldmks, []))
+                    for idx in keypoints:
                         cv2.circle(
                             annotated_image, (int(ldmks[idx, 1]), int(ldmks[idx, 0])), radius=0, color=self.font_color, thickness=-1)
                         if self.visualize_landmarks_number == True:
@@ -443,6 +485,9 @@ class SignalProcessing():
                         elif region_type == "rects":
                             annotated_image = draw_rects(
                                 annotated_image, np.array(magic_ldmks[:, 1]), np.array(magic_ldmks[:, 0]), np.array(self.rects[:, 0]), np.array(self.rects[:, 1]), color)
+                        elif region_type == 'landmark':
+                            for region in magic_ldmks:
+                                annotated_image = draw_patch(annotated_image, region[:,0:2], color=[255, 0, 0])
                     self.visualize_landmarks_collection.append(
                         annotated_image)
                 ### loop break ###
@@ -450,6 +495,7 @@ class SignalProcessing():
                     break
         sig = np.array(sig, dtype=np.float32)
         return np.copy(sig[:, :, 2:])
+
 
     def get_landmarks(self):
         """
