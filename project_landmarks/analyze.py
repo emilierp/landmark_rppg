@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 
-from pyVHR.utils.errors import getErrors
+# from pyVHR.utils.errors import getErrors
 from scipy.stats import ttest_ind, zscore
 from scipy.stats import f_oneway, kruskal
+import string
 
 
 PALETTE = 'Spectral' # "Spectral"
@@ -163,15 +164,15 @@ def get_palette(df, hue='landmarks_id'):
 def plot_boxplot_each_landmark(df, metric, dataset_name, groupby_col='landmarks',ax=None):
     # Determin median metric order
     # grouped = df[[groupby_col, metric]].groupby(groupby_col).mean().sort_values(by=metric) # mean
-    grouped = df[[groupby_col, metric]].groupby(groupby_col).median().sort_values(by=metric) # sort by median
+    grouped = df[[groupby_col, metric]].groupby(groupby_col).mean().sort_values(by=metric) # sort by median
     if 'PCC' in metric:
         grouped = grouped.sort_values(by=metric, ascending=False) 
     palette = get_palette(df.sort_values(by=['ROI',groupby_col]), hue=groupby_col) # sort to get colors by ROI
 
     if ax is None:
         ax = plt.gca()
-    # box = sns.boxplot(x=groupby_col, y=metric, data=df, order=grouped.index, palette=palette, hue=groupby_col, legend='brief', ax=ax, showfliers=False, showmeans=True, meanprops={"marker":"o","markerfacecolor":"white", "markeredgecolor":"black", "markersize":"5"})
-    box = sns.boxplot(x=groupby_col, y=metric, data=df, order=grouped.index, palette=palette, hue=groupby_col, legend='brief', ax=ax, showfliers=False,)
+    box = sns.boxplot(x=groupby_col, y=metric, data=df, order=grouped.index, palette=palette, hue=groupby_col, legend='brief', ax=ax, showfliers=False, showmeans=True, meanprops={"marker":"o","markerfacecolor":"white", "markeredgecolor":"black", "markersize":"5"})
+    # box = sns.boxplot(x=groupby_col, y=metric, data=df, order=grouped.index, palette=palette, hue=groupby_col, legend='brief', ax=ax, showfliers=True,)
     # box = sns.violinplot(x=groupby_col, y=metric, data=df, order=grouped.index, palette=palette, legend='brief',  hue=groupby_col, ax=ax)
     box.legend_.remove()
     labels = [item.get_text().replace('_', ' ')  for item in box.get_xticklabels()]
@@ -493,3 +494,32 @@ def test_pvalue(df, setting, SETTINGS, condition):
         tests[cols] = tests[cols].apply(lambda x: f"{x:.3f}" if not pd.isna(x) else x)
 
     return tests
+
+
+################## ANOVA Tukey ###########################
+
+def get_df_rank(x, col='landmarks', metric='MAE', bins=[0, 0.25, 0.75, 1]):
+
+    import string
+    df_rank = x[['landmarks_id', 'landmarks', 'ROI', 'MAE', 'score', 'timeDTW']].groupby(['landmarks_id', 'landmarks' , 'ROI']).agg(['median', 'mean','std' ])
+    df_rank['rank_MAE'] = df_rank[('MAE', 'mean')].rank(ascending=True).astype(int)
+    df_rank['rank_score'] = df_rank[('score', 'mean')].rank(ascending=True).astype(int)
+    df_rank = df_rank.sort_values(by=('score', 'mean')).reset_index()
+    # if landmarks is not a tuple
+    if type(df_rank['landmarks'].iloc[0]) == str: 
+        df_rank['landmarks'] = df_rank['landmarks'].apply(lambda x: x.replace('_', ' '))
+    ldmk_score_dict = dict(zip(df_rank[( 'landmarks',       '')], df_rank[( 'rank_score',       '')]))
+    mi = df_rank.columns.tolist()
+    df_rank.columns = pd.Index([e[0] + '_' + e[1] if e[1] != '' else e[0] for e in mi])
+    # cut based on 0.1 and 0.9 quantiles
+    quantiles = df_rank['MAE_mean'].quantile(bins)
+    # df_rank['bin'] = pd.cut(df_rank['MAE_mean'], bins=quantiles, labels=['< Q1', 'Q1 - Q3', '> Q3'], include_lowest=True).astype('str')
+    df_rank['bin'] = pd.cut(df_rank['MAE_mean'], bins=quantiles, labels=['G1: < 0.1%', 'G2: 0.1-0.9%', 'G3: > 0.9%'], include_lowest=True).astype('str')
+
+    # cut based on bunch of quantiles
+    # quantiles = df_rank['MAE_mean'].quantile([0, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 1])
+    # df_rank['bin'] = pd.cut(df_rank['MAE_mean'], bins=quantiles, labels=list(string.ascii_lowercase)[:len(quantiles)-1], include_lowest=True).astype('str')
+
+    x = x.merge(df_rank[['landmarks_id', 'bin', 'MAE_mean', 'rank_MAE', 'rank_score']], on='landmarks_id', how='left')
+    
+    return x, df_rank, ldmk_score_dict

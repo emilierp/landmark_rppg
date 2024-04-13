@@ -68,7 +68,7 @@ dependencies:
   - entrypoints=0.4=py39haa95532_0
   - exceptiongroup=1.0.4=py39haa95532_0
   - executing=0.8.3=pyhd3eb1b0_0
-  - fastrlock=0.8=py39h415ef7b_2
+  - fastrlock=0.8=py39h415ef7b_2 
   - ffmpeg=4.2.3=ha925a31_0
   - filelock=3.9.0=py39haa95532_0
   - fonttools=4.43.1=py39ha55989b_0

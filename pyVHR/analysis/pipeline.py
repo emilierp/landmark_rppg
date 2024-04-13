@@ -850,9 +850,9 @@ class DeepPipeline(Pipeline):
             print("\nBPM estimation with: %s" % (bpm_type))
         if bpm_type == 'welch':
             if cuda:
-                bpmES = BVP_to_BPM_cuda(bvps, fps, minHz=minHz, maxHz=maxHz)
+                bpmES = BVP_to_BPM_cuda(bvps, fps, minHz=Pipeline.minHz, maxHz=Pipeline.maxHz)
             else:
-                bpmES = BVP_to_BPM(bvps, fps, minHz=minHz, maxHz=maxHz)
+                bpmES = BVP_to_BPM(bvps, fps, minHz=Pipeline.minHz, maxHz=Pipeline.maxHz)
         else:
             raise ValueError("The only 'bpm_type' supported for deep models is 'welch'")
            
@@ -927,6 +927,7 @@ class DeepPipeline(Pipeline):
             videoFileName = dataset.getVideoFilename(v)
             print(videoFileName)
             fps = get_fps(videoFileName)
+            wsize = 6
             
             sp = SignalProcessing()
             frames = sp.extract_raw(videoFileName)
