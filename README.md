@@ -5,6 +5,7 @@ This code is built upon the pyVHR framework by Bocconi et al. :
 - Boccignone, Giuseppe & Conte, Donatello & Cuculo, Vittorio & D'Amelio, Alessandro & Grossi, Giuliano & Lanzarotti, Raffaella. (2020). An Open Framework for Remote-PPG Methods and their Assessment. IEEE Access. 8. 216083-216103. 10.1109/ACCESS.2020.3040936. 
 
 On top of the functionalities of pyVHR, it allows for extracting rPPG from anatomical landmarks.
+(Face image from: This person does not exist https://this-person-does-not-exist.com/en)
 <img src="./img/landmarks_def.png" width="800">
 
 The goal of this project is to compare the performance of the rPPG extraction from the use of a single landmark to the use of multiple landmarks.
