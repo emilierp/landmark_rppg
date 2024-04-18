@@ -244,38 +244,14 @@ def get_magic_landmarks():
     """ returns high_priority and mid_priority list of landmarks identification number """
     return [*MagicLandmarks.forehead_center, *MagicLandmarks.cheek_left_bottom, *MagicLandmarks.cheek_right_bottom], [*MagicLandmarks.forehoead_right, *MagicLandmarks.forehead_left, *MagicLandmarks.cheek_left_top, *MagicLandmarks.cheek_right_top]
 
-
+# Modified
 class CustomLandmarks():
+  """
+  This class contains the landmarks used for the patches.
+  It defines 28 landmarks on the face from the MediaPipe 468 keypoints. 
+  """
 
   def __init__(self):
-    # self.lower_medial_forehead = [10, 109, 108, 151, 337, 338]
-    # self.left_lower_lateral_forehead = [67, 103, 104, 105, 66, 107, 108, 109]
-    # self.right_lower_lateral_forehead = [297, 338, 337, 336, 296, 334, 333, 332]
-    # self.glabella = [151, 108, 107, 55, 8, 285, 336, 337]
-    # self.upper_nasal_dorsum = [8, 55, 193, 122, 196, 197, 419, 351, 417, 285]
-    # self.lower_nasal_dorsum = [197, 196, 3, 51, 5, 281, 248, 419]
-    # self.soft_triangle = [4, 45, 134, 220, 237, 44, 1, 274, 457, 440, 363, 275]
-    # self.left_ala = [134, 131, 49, 102, 64, 219, 218, 237, 220]
-    # self.right_ala = [363, 440, 457, 438, 439, 294, 331, 279, 360]
-    # self.nasal_tip = [5, 51, 45, 4, 275, 281]
-    # self.left_lower_nasal_sidewall = [3, 217, 126, 209, 131, 134]
-    # self.right_lower_nasal_sidewall = [248, 363, 360, 429, 355, 437]
-    # self.left_mid_nasal_sidewall = [188, 114, 217, 236, 196]
-    # self.right_mid_nasal_sidewall = [412, 419, 456, 437, 343]
-    # self.philtrum = [2, 97, 167, 37, 0, 267, 393, 326]
-    # self.left_upper_lip = [97, 165, 185, 40, 39, 37, 167]
-    # self.right_upper_lip = [326, 393, 267, 269, 270, 409, 391]
-    # self.left_nasolabial_fold = [97, 98, 203, 186, 185, 165]
-    # self.right_nasolabial_fold = [326, 391, 409, 410, 423, 327]
-    # self.left_temporal = [54, 21, 162, 127, 116, 143, 156, 63, 68]
-    # self.right_temporal = [284, 298, 293, 383, 372, 345, 356, 389, 251]
-    # self.left_malar = [126, 100, 118, 117, 116, 123, 147, 187, 205, 203, 129, 209]
-    # self.right_malar = [355, 429, 358, 423, 425, 411, 376, 352, 345, 346, 347, 329]
-    # self.left_lower_cheek = [203, 205, 187, 147, 177, 215, 138, 172, 136, 135, 212, 186, 206]
-    # self.right_lower_cheek = [423, 426, 410, 432, 364, 365, 397, 367, 435, 401, 376, 411, 425]
-    # self.chin = [18, 83, 182, 194, 32, 140, 176, 148, 152, 377, 400, 369, 262, 418, 406, 313]
-    # self.left_marionette_fold = [57, 212, 210, 169, 150, 149, 176, 140, 204, 43]
-    # self.right_marionette_fold = [287, 273, 424, 369, 400, 378, 379, 394, 430, 432]
     
     self.lower_medial_forehead = [10, 109, 108, 151, 337, 338]
     self.left_lower_lateral_forehead = [67, 103, 104, 105, 66, 107, 108, 109]
@@ -324,61 +300,54 @@ class CustomLandmarks():
 
       return unique_values_list
   
-
-  def get_patch_vertices(self, landmark):
+  def get_face_regions(self):
     """
-    Returns the vertices of a patch
+    Returns a dictionary of face regions (forehead, ...) and the corresponding landmarks (glabella, ...)
     """
-
-    # get patch_name from list of landmarks
-    patch_name = [key for key, value in self.__dict__.items() if landmark == value][0]
-
-    patch_vertices = {
-      'lower_medial_forehead': [10, 109, 108, 151, 337, 338],
-      'right_lower_lateral_forehead': [297, 338, 337, 336, 296, 334, 333, 332],
-      'left_lower_lateral_forehead':  [67, 103, 104, 105, 66, 107, 108, 109],
-      'soft_triangle': [4, 45, 134, 220, 237, 44, 1, 274, 457, 440, 363, 275],
-      'glabella': [151, 108, 107, 55, 8, 285, 336, 337],
-      'upper_nasal_dorsum': [8, 55, 193, 122, 196, 197, 419, 351, 417, 285],
-      'lower_nasal_dorsum': [196, 197, 419, 248, 281, 5, 51, 3],
-      'left_ala': [49, 131, 134, 220, 237, 218, 219, 64, 102],
-      'right_ala': [440, 363, 360, 279, 331, 294, 439, 438, 457],
-      'nasal_tip': [51, 5, 281, 275, 4, 45, 51],
-      'left_lower_nasal_sidewall': [126, 217, 3, 134, 131, 209],
-      'right_lower_nasal_sidewall': [248, 437, 355, 429, 360, 363],
-      'left_mid_nasal_sidewall': [114, 188, 196, 236, 217],
-      'right_mid_nasal_sidewall': [419, 412, 343, 437, 456],
-      'philtrum': [167, 97, 2, 326, 393, 267, 0, 37],
-      'left_upper_lip' : [165, 97, 167, 37, 39, 40, 185],
-      'right_upper_lip' : [393, 326, 391, 409, 270, 269, 267],
-      'left_nasolabial_fold' : [203, 98, 97, 165, 185, 186],
-      'right_nasolabial_fold' : [326, 327, 423, 410, 409, 391],
-      'left_temporal' : [21, 54, 68, 63, 156, 143, 116, 127, 162],
-      'right_temporal' : [293, 298, 284, 251, 389, 356, 345, 372, 383],
-      'left_malar' : [116, 117, 118, 100, 126, 209, 129, 203, 205, 187, 147, 123],
-      'right_malar' : [429, 355, 329, 347, 346, 345, 352, 376, 411, 425, 423, 358],
-      'left_lower_cheek' : [177, 147, 187, 205, 203, 206, 186, 212, 136, 135, 172, 138, 215],
-      'right_lower_cheek' : [426, 423, 425, 411, 376, 401, 435, 367, 397, 364, 365, 432, 410],
-      'chin' : [32, 194, 182, 83, 18, 313, 406, 418, 262, 369, 400, 377, 152, 148, 176, 140],
-      'left_marionette_fold' : [210, 212, 57, 43, 204, 140, 176, 149, 150, 169],
-      'right_marionette_fold' : [424, 273, 287, 432, 430, 394, 379, 378, 400, 369],
-
-    }
-
-    return patch_vertices[patch_name]
-
-  
-  def get_rois(self):
-    
     return {
-       'forehead': ['lower_medial_forehead','glabella','left_lower_lateral_forehead','right_lower_lateral_forehead'],
-       'nose': ['upper_nasal_dorsum','lower_nasal_dorsum','left_mid_nasal_sidewall','right_mid_nasal_sidewall','left_lower_nasal_sidewall','right_lower_nasal_sidewall','nasal_tip','soft_triangle','left_ala','right_ala'],
-       'cheeks':['left_malar','right_malar', 'left_lower_cheek','right_lower_cheek'],
-       'jaw':['left_marionette_fold','right_marionette_fold','chin'],
-       'temple':['left_temporal','right_temporal'],
-       'mustache':['left_nasolabial_fold','right_nasolabial_fold','left_upper_lip','right_upper_lip','philtrum'],
-       }
+        'forehead': [
+            'lower_medial_forehead',
+            'glabella',
+            'left_lower_lateral_forehead',
+            'right_lower_lateral_forehead'
+        ],
+        'nose': [
+            'upper_nasal_dorsum',
+            'lower_nasal_dorsum',
+            'left_mid_nasal_sidewall',
+            'right_mid_nasal_sidewall',
+            'left_lower_nasal_sidewall',
+            'right_lower_nasal_sidewall',
+            'nasal_tip',
+            'soft_triangle',
+            'left_ala',
+            'right_ala'
+        ],
+        'cheeks': [
+            'left_malar',
+            'right_malar',
+            'left_lower_cheek',
+            'right_lower_cheek'
+        ],
+        'jaw': [
+            'left_marionette_fold',
+            'right_marionette_fold',
+            'chin'
+        ],
+        'temple': [
+            'left_temporal',
+            'right_temporal'
+        ],
+        'mustache': [
+            'left_nasolabial_fold',
+            'right_nasolabial_fold',
+            'left_upper_lip',
+            'right_upper_lip',
+            'philtrum'
+        ],
+    }
   
+  # TODO
   def get_valid_combinations(self, min_len=2, max_len=3, roi=None):
     """
       Returns a list of valid combinations of landmarks for a given roi
@@ -424,7 +393,68 @@ class CustomLandmarks():
 
 
     return df_combs, valid_combs
+  
+  def get_combinations(elements, min_len=2, max_len=3):
+      combs = list(chain.from_iterable(combinations(elements, r) for r in range(min_len,max_len)))
+      return [tuple(i) for i in combs]
 
+  def get_landmarks_combination(self, elements, min_len=2, max_len=3):
+      """
+      Combine landmarks in given list of elements
+      Args:
+          elements: list of landmarks to combine
+          min_len: minimum number of landmarks to combine
+          max_len: maximum number of landmarks to combine, None means all landmarks 
+      """
+
+      # landmarks that do not have a left and right component
+      asym_elements = [ele.replace('left_','') for ele in elements if 'left_' in ele]
+
+      # list of landmarks with 1 value for left and right components
+      elements = list(set(name.replace('left_', '').replace('right_', '').strip() for name in elements))
+
+      # if not specified, look for the combination of all landmarks in the list
+      if max_len is None:
+          max_len = len(elements)
+
+      all_landmarks = list(chain.from_iterable(combinations(elements, r) for r in range(min_len,max_len+1)))
+      all_landmarks = [list(i) for i in all_landmarks]
+
+      # take out redundant combinations
+      for i,comb in enumerate(all_landmarks):
+          for ldmk in comb:
+              if ldmk in asym_elements:
+                  comb = list(all_landmarks[i])
+                  comb.remove(ldmk)
+                  all_landmarks[i] = comb + [f'left_{ldmk}', f'right_{ldmk}']
+          all_landmarks[i] = set(sorted(all_landmarks[i]))
+
+      return all_landmarks
+
+  def get_landmarks(self, case,  min_len=2, max_len=3, all_landmarks_names=None, face_regions=None):
+      """
+      Args:
+          case: 'ind_18', 'ind_28','combine'
+          '- ind_28': each 18 landmarks, (left and right) as one   
+          - 'ind_18': each 28 landmarks, (left and right) as separate
+          - 'combine': combine random landmarks, all_landmarks_names contains left and right components as separate
+      """
+      if all_landmarks_names is None:
+          all_landmarks_names = list(self.get_all_landmarks().keys())
+      if face_regions is None:
+          face_regions = self.get_face_regions()
+
+      if case == 'ind_28':
+          all_landmarks = [[landmark] for landmark in all_landmarks_names]
+      elif case == 'ind_18':
+          # make a list with left and right components together
+          all_landmarks = [[landmark, landmark.replace('left', 'right')] if 'left' in landmark else [landmark] for landmark in all_landmarks_names if 'right' not in landmark]
+      elif case == 'combine':
+          all_landmarks = self.get_landmarks_combination(all_landmarks_names, min_len, max_len)
+      else:
+          raise Exception('case not supported', case)
+
+      return all_landmarks
 
 
 @njit(parallel=True)
@@ -462,6 +492,10 @@ def draw_rects(image, xcenters, ycenters, xsides, ysides, color):
 def draw_patch(image, ldmks, color=[255, 0, 0]):
     """
     This method is used to draw the outlines of patch defined by keypoints.
+    Args:
+        image (ndarray): image to draw the patch on [rows, cols, 3].
+        ldmks (ndarray): coordinates of keypoints contouring the landmark. ndarray with shape [num_keypoints, 5].
+        color (list): color of the patch.
     """
     def sort_coordinates(list_of_xy_coords):
         cx, cy = list_of_xy_coords.mean(0)

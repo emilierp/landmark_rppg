@@ -445,7 +445,7 @@ def get_landmarks(case,  min_len=2, max_len=3, all_landmarks_names=None, rois=No
     if all_landmarks_names is None:
         all_landmarks_names = vhr.extraction.utils.CustomLandmarks().get_all_landmarks()
     if rois is None:
-        rois = constants.get_rois()
+        rois = vhr.extraction.utils.CustomLandmarks().get_face_regions()
 
     if case == 'each_28':
         all_landmarks_names = list(all_landmarks_names.keys())

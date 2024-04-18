@@ -56,8 +56,6 @@ class LGI_PPGI(Dataset):
         last_vid_time = int(float(root[-1].find('value1').text))
 
         diff = (last_bvp_time - last_vid_time)
-        if diff < 0:
-            print("adjust")
         while diff < 0:
             root = root[:-1]
             last_vid_time = int(float(root[-1].find('value1').text))

@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import constants
+import pyVHR
 
 top_landmarks = ['glabella', 'upper_nasal_dorsum', 'lower_medial_forehead', 'soft_triangle', 'malar', 'lower_lateral_forehead', 'nasal_tip']
 
@@ -29,7 +30,7 @@ def eda_combination(x, sym_ldmks, agg_fct='mean', metric='score'):
     print(f"Mean value for OS going from {y['mean'].min()} to {y['mean'].max()}")
     # print(f"Median value for OS going from {y['median'].min()} to {y['median'].max()}")
 
-    rois = constants.get_rois().keys()
+    rois = pyVHR.extraction.CustomLandmarks().get_face_regions().keys()
     for roi in rois:
         y[roi] = y['ROI'].apply(lambda x: roi in x).sum() / y.shape[0]
         
@@ -42,7 +43,7 @@ def eda_combination(x, sym_ldmks, agg_fct='mean', metric='score'):
     display(y[rois].drop_duplicates().sort_values(by=0, axis=1, ascending=False))
 
     for ldmk in sym_ldmks:
-        y[ldmk] = y['landmarks_names'].apply(lambda x: ldmk in x).sum() / y.shape[0]
+        y[ldmk] = y['landmarks_names'].apply(lambda x: ldmk.replace('_', ' ') in x).sum() / y.shape[0]
     display(y[sym_ldmks].drop_duplicates().sort_values(by=0, axis=1, ascending=False))
 
     return z, y
@@ -80,7 +81,7 @@ def plot_metric_rank2(df, metric, dataset_name, groupby_col='landmarks_id', top=
 def agg_ldmk_comb(y, agg_col, case='ind_ldmk'):
     t = y[agg_col].drop_duplicates().sort_values(by=0, axis=1, ascending=False).copy().T.reset_index().rename({0: 'Frequency Distribution', 'index':'Landmarks'}, axis=1)
     if case == 'ind_ldmk':
-        rois = constants.get_rois()
+        rois = pyVHR.extraction.CustomLandmarks().get_face_regions()
         for roi in list(rois.keys()):
             rois[roi] = [name.replace('left_', '').replace('right_', '') for name in rois[roi]]
             t.loc[t['Landmarks'].isin(rois[f'{roi}']),'ROI'] = roi    

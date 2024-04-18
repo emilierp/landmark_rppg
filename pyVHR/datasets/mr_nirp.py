@@ -5,7 +5,6 @@ from pyVHR.datasets.dataset import Dataset
 from pyVHR.BPM.BPM import BVPsignal
 import scipy
 import os
-import glob
 import re
 import cv2
 
@@ -45,29 +44,6 @@ class MR_NIRP(Dataset):
         else:
             bvp = [bvp_elements[i][0][0] for i in range(len(bvp_elements))]
         data = np.array(bvp)
-        
-        # n_bvp_samples = len(bvp)
-        # last_bvp_time = int((n_bvp_samples*1000)/self.SIG_SampleRate)
-        # print("bvp: ",n_bvp_samples, last_bvp_time)
-
-        # vid_npy_filename = path.join(path.dirname(
-        #     filename), 'pulseOx.npy')
-        # vid_npy = np.load(vid_npy_filename, allow_pickle=True)
-        # last_vid_time = int((vid_npy.shape[-1]*1000)/self.frameRate)
-        # print("last vid time",last_vid_time)
-
-        # diff = ((last_bvp_time - last_vid_time)/1000)
-        # print("diff", diff)
-
-        # assert diff >= 0, 'Unusable data.'
-
-        # #print("Skipping %.2f seconds..." % diff)
-
-        # diff_samples = round(diff*self.SIG_SampleRate)
-        # print("Diff samples", diff_samples)
-
-        # data = np.array(bvp[diff_samples:])
-        # print("data:",data.shape)
 
         return BVPsignal(data, self.SIG_SampleRate)
     
@@ -77,24 +53,6 @@ class MR_NIRP(Dataset):
         Load dataset file names and directories of frames: 
         define vars videoFilenames and BVPFilenames
         """
-
-        # # check if video files exist or create them from images
-        # for root, dirs, files in os.walk(self.videodataDIR):
-        #     for d in dirs:
-        #         dirname = os.path.join(root, d)
-        #         if not dirname.endswith('RGB_corrected'):
-        #              continue
-        #         if not glob.glob(dirname +'/*.avi'):
-        #             #create videofile from images
-        #             frames = self.__loadFrames(dirname)
-        #             fps = self.frameRate
-        #             width = frames[0].shape[1]
-        #             height = frames[0].shape[0]
-        #             #fourcc = cv2.VideoWriter_fourcc(*'MPNG')
-        #             writer = cv2.VideoWriter(dirname + '/' + dirname.split('\\')[-2] + '.avi', 0, fps, (width, height))
-        #             for frame in frames:
-        #                 writer.write(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        #             writer.release()
         
         # -- loop on the dir struct of the dataset getting filenames
         for root, dirs, files in os.walk(self.videodataDIR):

@@ -177,12 +177,18 @@ def plot_boxplot_each_landmark(df, metric, dataset_name, groupby_col='landmarks'
     box.legend_.remove()
     labels = [item.get_text().replace('_', ' ')  for item in box.get_xticklabels()]
     box.set_xticks(range(len(labels)))
-    box.set_xticklabels(labels,rotation=90, fontsize=10)
+    box.set_xticklabels(labels,rotation=90, fontsize=13)
+    # top_ldmk = ['glabella', 'upper nasal dorsum', 'lower medial forehead',  'soft triangle', 'malar', 'lower lateral forehead', 'nasal tip', 'chin','nasolabial fold', 'lower cheek','marionette fold', 'ala']
+    # for i, label in enumerate(ax.get_xticklabels()):
+    #     if label.get_text() in top_ldmk:
+    #         label.set_fontweight('bold')
+
     if metric == 'MAE': metric = r'$\Delta$' + 'BPM'
     if metric == 'timeDTW': metric = 'DTW'
     if metric == 'score': metric = 'OS'
 
-    box.set_xlabel('Landmark')
+    # box.set_xlabel('Landmark')
+    box.set_xlabel('')
     box.set_ylabel(metric)
     if dataset_name in ['MR_NIRP', 'LGI_PPGI']: dataset_name = dataset_name.upper()
     title = f"{metric} values for individual landmarks, ordered by median ({dataset_name})"
@@ -212,6 +218,7 @@ def plot_bar_ranking(df, metric, dataset_name, groupby_col='landmarks', ax=None)
     labels = [item.get_text().replace('_', ' ')  for item in ax.get_xticklabels()]
     bar.set_xticks(range(len(labels)))
     bar.set_xticklabels(labels, rotation=90, fontsize=6)
+    
     if metric == 'MAE': metric = r'$\Delta$' + 'BPM'
     bar.set_ylabel(metric)
     bar.set_xlabel('Landmark')
@@ -498,7 +505,7 @@ def test_pvalue(df, setting, SETTINGS, condition):
 
 ################## ANOVA Tukey ###########################
 
-def get_df_rank(x, col='landmarks', metric='MAE', bins=[0, 0.25, 0.75, 1]):
+def get_df_rank(x, col='landmarks', metric='MAE', bins=None):
 
     import string
     df_rank = x[['landmarks_id', 'landmarks', 'ROI', 'MAE', 'score', 'timeDTW']].groupby(['landmarks_id', 'landmarks' , 'ROI']).agg(['median', 'mean','std' ])
@@ -511,15 +518,23 @@ def get_df_rank(x, col='landmarks', metric='MAE', bins=[0, 0.25, 0.75, 1]):
     ldmk_score_dict = dict(zip(df_rank[( 'landmarks',       '')], df_rank[( 'rank_score',       '')]))
     mi = df_rank.columns.tolist()
     df_rank.columns = pd.Index([e[0] + '_' + e[1] if e[1] != '' else e[0] for e in mi])
-    # cut based on 0.1 and 0.9 quantiles
-    quantiles = df_rank['MAE_mean'].quantile(bins)
-    # df_rank['bin'] = pd.cut(df_rank['MAE_mean'], bins=quantiles, labels=['< Q1', 'Q1 - Q3', '> Q3'], include_lowest=True).astype('str')
-    df_rank['bin'] = pd.cut(df_rank['MAE_mean'], bins=quantiles, labels=['G1: < 0.1%', 'G2: 0.1-0.9%', 'G3: > 0.9%'], include_lowest=True).astype('str')
+    try:
+        # cut based on 0.1 and 0.9 quantiles
+        if bins: 
+            quantiles = df_rank['MAE_mean'].quantile(bins)
+            # df_rank['bin'] = pd.cut(df_rank['MAE_mean'], bins=quantiles, labels=['< Q1', 'Q1 - Q3', '> Q3'], include_lowest=True).astype('str')
+            df_rank['bin'] = pd.cut(df_rank['MAE_mean'], bins=quantiles, labels=['G1: < 0.1%', 'G2: 0.1-0.9%', 'G3: > 0.9%'], include_lowest=True).astype('str')
 
-    # cut based on bunch of quantiles
-    # quantiles = df_rank['MAE_mean'].quantile([0, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 1])
-    # df_rank['bin'] = pd.cut(df_rank['MAE_mean'], bins=quantiles, labels=list(string.ascii_lowercase)[:len(quantiles)-1], include_lowest=True).astype('str')
+        # cut based on bunch of quantiles
+        else:
+            quantiles = df_rank['MAE_mean'].quantile([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,1])
+            labels =  ['G1: 0-10%', 'G2: 10-20%', 'G3: 20-30%', 'G4: 30-40%', 'G5: 40-50%', 'G6: 50-60%', 'G7: 60-70%', 'G8: 70-80%', 'G9: 80-90%', 'G10: 90-100%' ]
+            # df_rank['bin'] = pd.cut(df_rank['MAE_mean'], bins=quantiles, labels=list(string.ascii_lowercase)[:len(quantiles)-1], include_lowest=True).astype('str')
+            df_rank['bin'] = pd.cut(df_rank['MAE_mean'], bins=quantiles, labels=labels, include_lowest=True).astype('str')
 
-    x = x.merge(df_rank[['landmarks_id', 'bin', 'MAE_mean', 'rank_MAE', 'rank_score']], on='landmarks_id', how='left')
+        x = x.merge(df_rank[['landmarks_id', 'bin', 'MAE_mean', 'rank_MAE', 'rank_score']], on='landmarks_id', how='left')
+
+    except: # if only 1 element in df
+        x = x.merge(df_rank[['landmarks_id', 'MAE_mean', 'rank_MAE', 'rank_score']], on='landmarks_id', how='left')
     
     return x, df_rank, ldmk_score_dict

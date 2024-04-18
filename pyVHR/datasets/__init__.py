@@ -11,3 +11,4 @@ from .v4v import *
 from .vicar_ppg import *
 
 # Custom dataset
+from .mr_nirp import *

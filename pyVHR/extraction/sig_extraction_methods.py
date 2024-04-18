@@ -271,20 +271,19 @@ def landmarks_median_custom_rect(ldmks, im, rects, RGB_LOW_TH, RGB_HIGH_TH):
                 r_ldmks[ld_id, 4] = np.int32(np.median(b[goodidx]))
     return r_ldmks
 
-
-# Custom patch landmark
+# Modified
 # @njit(['float32[:,:](float32[:,:],uint8[:,:,:],float32[:,:], int32, int32)', ], parallel=True, fastmath=True, nogil=True)
 def landmarks_path_mean(ldmks, im, sampling_method, nb_sample_points, RGB_LOW_TH, RGB_HIGH_TH):
     """
     This method computes the RGB-Mean Signal excluding 'im' pixels
     that are outside the RGB range [RGB_LOW_TH, RGB_HIGH_TH] (extremes are included).
-    It takes all pixels inside the polygon defined by the keypoints in the landmark.
+    It takes pixels inside the patch definied by the landmark's keypoints.
 
     Args: 
         ldmks (float32 ndarray): landmakrs as ndarray with shape [num_landmarks, 5],
              where the second dimension contains y-coord, x-coord, r-mean (value is not important), g-mean (value is not important), b-mean (value is not important).
         im (uint8 ndarray): ndarray with shape [rows, columns, rgb_channels].
-        sampling_method: 'all' or 'random' or 'corner'. 'all': all pixels inside the polygon are used. 'random': nb_sample_points pixels are randomly sampled inside the polygon. 'corner': only the corner pixels are used.
+        sampling_method: 'all' or 'random'. 'all': all pixels inside the polygon are used. 'random': nb_sample_points pixels are randomly sampled inside the polygon.
         RGB_LOW_TH (numpy.int32): RGB low threshold value.
         RGB_HIGH_TH (numpy.int32): RGB high threshold value.
     
@@ -298,22 +297,19 @@ def landmarks_path_mean(ldmks, im, sampling_method, nb_sample_points, RGB_LOW_TH
         indices = np.argsort(angles)
         return list_of_xy_coords[indices]
     
-    ldmks = sort_coordinates(ldmks[:,0:2]) # works with (c,r) coordinates
+    ldmks = sort_coordinates(ldmks[:,0:2]) # works with (column,row) coordinates
     r_ldmks = np.zeros((1,5), dtype=np.float32)
     lds_mean = np.zeros(3, dtype=np.float32)
 
-    polygon_path = Path(ldmks[:,::-1]) # works with (r,c) coordinates
-    top_left = np.min(ldmks, axis=0).astype(int)
-    bottom_right = np.max(ldmks, axis=0).astype(int)
-
-    x, y = np.meshgrid(np.arange(top_left[1], bottom_right[1]+1), np.arange(top_left[0], bottom_right[0]+1)) # (c,r)
-    x, y = x.flatten(), y.flatten()
-    pixel_coordinates = np.vstack((x,y)).T
+    polygon_path = Path(ldmks[:,::-1]) # works with (row,column) coordinates
+    top_left, bottom_right = np.min(ldmks, axis=0).astype(int), np.max(ldmks, axis=0).astype(int)
+    x, y = np.meshgrid(np.arange(top_left[1], bottom_right[1]+1), np.arange(top_left[0], bottom_right[0]+1)) # (column,row)
+    pixel_coordinates = np.vstack((x.flatten(),y.flatten())).T
     grid = polygon_path.contains_points(pixel_coordinates)
-    pixel_coordinates = pixel_coordinates[grid][:,::-1] # (r,c)
+    pixel_coordinates = pixel_coordinates[grid][:,::-1] # (row,column)
     if sampling_method == 'all':
         pass
-    elif sampling_method == 'random': # randomly sample from pixel_coordinates
+    elif sampling_method == 'random': # randomly sample from pixels inside the landmark patch
         nb_sample_points = min(nb_sample_points, len(pixel_coordinates))
         pixel_coordinates = pixel_coordinates[np.random.choice(len(pixel_coordinates), nb_sample_points, replace=False)]
     # if sampling_method == 'corner':
