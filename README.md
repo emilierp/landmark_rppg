@@ -60,7 +60,6 @@ res.dataFrame
 ## Notebooks
 
 The notebooks_landmark folder contains examples of how to use the pipeline with landmarks on the datasets MR_NIRP, LGI_PPGI and UBFC_PHYS.
-It also contains a notebook to compare the results of the pipeline with individual landmarks to the results of the pipeline with multiple landmarks.
 - dataset_inspection.ipynb: Preprocess the data from the public datasets based on thier PPG singal quality.
 - pipeline.ipynb: Example of how to use the pipeline with landmarks on a video.
 - extract_landmarks.ipynb: Example of how to extract landmarks from all videos of a dataset and save the intermediate RGB results.
@@ -75,7 +74,7 @@ It also contains a notebook to compare the results of the pipeline with individu
 
 ## Contact 
 
-If you have any questions, please feel free to contact me through email (emilie.rlpg@gmail.com or moe.elgendi@hest.ethz.ch)!
+If you have any questions, please feel free to contact me through email (emilie.rlpg@gmail.com or moe.elgendi@hest.ethz.ch).
 
 ## Authors and acknowledgment
 This research project was supervised by Dr. Mohamed Elgendi and Prof. Dr. Carlo Menon. The code was developed by Emilie Rolland-Piegue. Also thank to all of the BMHT members and providers of datasets for the continuous help!
