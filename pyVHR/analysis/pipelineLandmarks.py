@@ -1,3 +1,8 @@
+"""
+    Pipeline for the landmark approach.
+"""
+
+
 import pandas as pd
 import numpy as np
 import pyVHR as vhr

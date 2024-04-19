@@ -1,3 +1,10 @@
+"""
+    Functions to analyze the results of the rPPG extraction from different landmarks
+    Author: Emilie Rolland-Piegue
+    Date: 09.04.2024
+"""
+
+
 import numpy as np
 import pandas as pd
 import constants
@@ -9,6 +16,8 @@ import plotly.express as px
 from scipy.stats import ttest_ind, zscore
 
 PALETTE = 'Spectral'
+
+##################### DATA FORMATTING ########################
 
 def get_dataset_settings(datasets):
     """

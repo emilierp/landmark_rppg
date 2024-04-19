@@ -66,6 +66,15 @@ The notebooks_landmark folder contains examples of how to use the pipeline with 
 - extract_landmarks.ipynb: Example of how to extract landmarks from all videos of a dataset and save the intermediate RGB results.
 - analyze.ipynb: Example of how to compare the results of the pipeline with individual landmarks to the results of the pipeline with multiple landmarks.
 
+# Results
+
+We compared the performance for rPPG and HR extraction for different Regions Of Interest (ROIs) based on the DTW and MAE metric. 
+The results are saved in the result folder.
+Our results show that:
+- The best landmark when using a single landmark is the glabella.
+- The use of multiple landmarks improves the performance of the rPPG extraction compared to the use of a single landmark.
+- The best combination when considering both still and motion videos is the use of: glabella, lower cheek, lower lateral forehead and malar. 
+
 
 # Datasets
 
