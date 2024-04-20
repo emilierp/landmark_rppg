@@ -87,7 +87,7 @@ Our results show that:
 If you have any questions, please feel free to contact me through email (emilie.rlpg@gmail.com or moe.elgendi@hest.ethz.ch).
 
 ## Authors and acknowledgment
-This research project was supervised by Dr. Mohamed Elgendi and Prof. Dr. Carlo Menon. The code was developed by Emilie Rolland-Piegue. Also thank to all of the BMHT members and providers of datasets for the continuous help!
+This research project was supervised by Dr. Mohamed Elgendi and Prof. Dr. Carlo Menon. The code was developed by Emilie Rolland-Piegue. Also thank you to the contributors of pyVHR and to all of the datasets' providers for the continuous help!
 
 ## License
 
